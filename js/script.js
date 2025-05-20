@@ -11,8 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const ctx = canvas.getContext('2d');
 
-    // (a) Start the player off with 0 gold.
-    let gold = 0; 
+    let gold = 0; // Starts with 0 gold as requested
     let goldPerSecond = 0;
     const clickValue = 1;
 
@@ -21,20 +20,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const itemImages = {};
     const itemImageLoaded = {};
 
-    const equipment = [ // Ensure your item IDs match potential image filenames
-        { id: "safety_glasses", name: "Safety Glasses", baseCost: 30.00, production: 0.30, owned: 0 },
-        { id: "gloves", name: "Gloves", baseCost: 150.00, production: 1.53, owned: 0 },
-        { id: "hammer", name: "Hammer", baseCost: 750.00, production: 7.80, owned: 0 },
-        { id: "screwdriver_set", name: "Screwdriver Set", baseCost: 3750.00, production: 39.80, owned: 0 },
-        { id: "pliers", name: "Pliers", baseCost: 18750.00, production: 202.96, owned: 0 },
-        { id: "wrench_set", name: "Wrench Set", baseCost: 93750.00, production: 1035.08, owned: 0 },
-        { id: "utility_knife", name: "Utility Knife", baseCost: 468750.00, production: 5278.89, owned: 0 },
-        { id: "measuring_tape", name: "Measuring Tape", baseCost: 2343750.00, production: 26922.32, owned: 0 },
-        { id: "hand_saw", name: "Hand Saw", baseCost: 11718750.00, production: 137303.83, owned: 0 },
-        { id: "chisel_set", name: "Chisel Set", baseCost: 58593750.00, production: 700249.55, owned: 0 },
-        { id: "file_set", name: "File Set", baseCost: 292968750.00, production: 3571272.71, owned: 0 },
+    const equipment = [
+        // Updated with imageFile property based on your naming convention
+        { id: "safety_glasses", name: "Safety Glasses", imageFile: "1. Safety Glasses", baseCost: 30.00, production: 0.30, owned: 0 },
+        { id: "gloves", name: "Gloves", imageFile: "2. Gloves", baseCost: 150.00, production: 1.53, owned: 0 },
+        { id: "hammer", name: "Hammer", imageFile: "3. Hammer", baseCost: 750.00, production: 7.80, owned: 0 },
+        { id: "screwdriver_set", name: "Screwdriver Set", imageFile: "4. Screwdriver Set", baseCost: 3750.00, production: 39.80, owned: 0 },
+        { id: "pliers", name: "Pliers", imageFile: "5. Pliers", baseCost: 18750.00, production: 202.96, owned: 0 },
+        { id: "wrench_set", name: "Wrench Set", imageFile: "6. Wrench Set", baseCost: 93750.00, production: 1035.08, owned: 0 },
+        { id: "utility_knife", name: "Utility Knife", imageFile: "7. Utility KnifeBox Cutter", baseCost: 468750.00, production: 5278.89, owned: 0 }, // Matched your "Utility KnifeBox Cutter.png"
+        { id: "measuring_tape", name: "Measuring Tape", imageFile: "8. Measuring Tape", baseCost: 2343750.00, production: 26922.32, owned: 0 }, // Assuming pattern continues
+        { id: "hand_saw", name: "Hand Saw", imageFile: "9. Hand Saw", baseCost: 11718750.00, production: 137303.83, owned: 0 },       // Assuming pattern continues
+        { id: "chisel_set", name: "Chisel Set", imageFile: "10. Chisel Set", baseCost: 58593750.00, production: 700249.55, owned: 0 }, // Assuming pattern continues
+        { id: "file_set", name: "File Set", imageFile: "11. File Set", baseCost: 292968750.00, production: 3571272.71, owned: 0 },       // Assuming pattern continues
+        // IMPORTANT: For any other items you have, add the correct `imageFile` property.
+        // If your filenames differ from "NUMBER. Item Name", adjust the string accordingly.
     ];
 
+    // --- FUTURISTIC LAYOUT (Same as previous version) ---
     const LAYOUT = {
         padding: 25,
         topBarHeight: 65,
@@ -46,34 +49,32 @@ document.addEventListener('DOMContentLoaded', () => {
             height: canvas.height - 90 - 25,
             card: {
                 width: (canvas.width - 260 - 25 - 25) - 30,
-                // (b) Fix button orientation: Increased card height
-                height: 270, // Increased from 210 to fit stats and buttons
-                bgColor: 'rgba(10, 20, 50, 0.8)', 
-                borderColor: '#00FFFF', 
+                height: 270,
+                bgColor: 'rgba(10, 20, 50, 0.8)',
+                borderColor: '#00FFFF',
                 borderWidth: 1.5,
-                borderRadius: 6, 
-                padding: 20, 
+                borderRadius: 6,
+                padding: 20,
                 iconSize: 60,
                 iconBgColor: 'rgba(0, 255, 255, 0.05)',
                 iconBorderColor: '#00FFFF',
-                iconPlaceholderSymbol: '◈', 
+                iconPlaceholderSymbol: '◈',
                 titleFont: 'bold 22px "Exo 2", Verdana, sans-serif',
                 statLabelFont: '14px "Exo 2", Verdana, sans-serif',
                 statValueFont: 'bold 17px "Exo 2", Verdana, sans-serif',
-                statLineHeight: 24, // Adjusted line height for stats
+                statLineHeight: 24,
                 buttonHeight: 40,
                 buttonGap: 12,
                 buttonBorderRadius: 4,
                 buttonFont: 'bold 15px "Exo 2", Verdana, sans-serif',
-                // Ensure disabledBgColor is distinct and used properly
                 buyButton: { width: 110, bgColor: 'rgba(0, 200, 255, 0.7)', hoverBgColor: 'rgba(0, 230, 255, 1)', disabledBgColor: 'rgba(50, 60, 80, 0.5)', textColor: '#FFFFFF', borderColor: '#00FFFF', glowColor: 'rgba(0,255,255,0.7)' },
                 maxButton: { width: 110, bgColor: 'rgba(0, 255, 150, 0.7)', hoverBgColor: 'rgba(0, 255, 180, 1)', disabledBgColor: 'rgba(50, 60, 80, 0.5)', textColor: '#FFFFFF', borderColor: '#39FF14', glowColor: 'rgba(57,255,20,0.7)' }
             },
-            scrollbar: { /* ... same ... */ width: 14, x: (canvas.width - 25 - 14 - 5), color: 'rgba(0, 0, 0, 0.4)', handleColor: '#00A8FF', handleHoverColor: '#00FFFF', handleBorderRadius: 4, },
+            scrollbar: { width: 14, x: (canvas.width - 25 - 14 - 5), color: 'rgba(0, 0, 0, 0.4)', handleColor: '#00A8FF', handleHoverColor: '#00FFFF', handleBorderRadius: 4, },
             itemGap: 20
         },
-        colors: { /* ... same ... */ canvasBgGradient: [ { stop: 0, color: '#0A0A2A' }, { stop: 1, color: '#14143F' } ], topBarBg: 'rgba(0, 0, 0, 0.0)', topBarSeparatorColor: 'rgba(0, 255, 255, 0.5)', textLight: '#F0F8FF', gold: '#FFD700', gps: '#39FF14', iconPlaceholderText: '#00FFFF', statLabelColor: '#B0C4DE', },
-        fonts: { /* ... same ... */ header: 'bold 24px "Exo 2", Verdana, sans-serif', }
+        colors: { canvasBgGradient: [ { stop: 0, color: '#0A0A2A' }, { stop: 1, color: '#14143F' } ], topBarBg: 'rgba(0, 0, 0, 0.0)', topBarSeparatorColor: 'rgba(0, 255, 255, 0.5)', textLight: '#F0F8FF', gold: '#FFD700', gps: '#39FF14', iconPlaceholderText: '#00FFFF', statLabelColor: '#B0C4DE', },
+        fonts: { header: 'bold 24px "Exo 2", Verdana, sans-serif', }
     };
 
     let buyButtonRects = [];
@@ -91,6 +92,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function loadItemImages() {
         equipment.forEach(item => {
+            if (!item.imageFile) { // Fallback or error if imageFile is not defined
+                console.warn(`Item ${item.id} is missing the 'imageFile' property.`);
+                itemImageLoaded[item.id] = 'error';
+                return;
+            }
             const img = new Image();
             itemImageLoaded[item.id] = false;
             img.onload = () => { 
@@ -99,14 +105,15 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             img.onerror = () => { 
                 itemImageLoaded[item.id] = 'error'; 
-                // (c) These pics are located here: pics/main_prod
-                console.warn(`Could not load image for ${item.id} at pics/main_prod/${item.id}.png`);
+                // Path updated to use item.imageFile
+                console.warn(`Could not load image for ${item.name} at pics/main_prod/${item.imageFile}.png`);
             };
-            img.src = `pics/main_prod/${item.id}.png`; // Updated path
+            // Path updated to use item.imageFile
+            img.src = `pics/main_prod/${item.imageFile}.png`; 
         });
     }
 
-    // --- Drawing Functions --- (drawTechRect, clearCanvas, drawTopBar, drawMainClicker - same as last futuristic)
+    // --- Drawing Functions --- (drawTechRect, clearCanvas, drawTopBar, drawMainClicker, drawShop - largely unchanged from previous, ensure drawShop uses item.id for itemImages/itemImageLoaded keys)
     function drawTechRect(x, y, width, height, radius, fillColor, borderColor, borderWidth = 1, shadowColor, shadowBlur, inset) { ctx.save(); if (shadowColor && shadowBlur && !inset) { ctx.shadowColor = shadowColor; ctx.shadowBlur = shadowBlur; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; } ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y); if (radius > 0) ctx.arcTo(x + width, y, x + width, y + radius, radius); else ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + height - radius); if (radius > 0) ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius); else ctx.lineTo(x + width, y + height); ctx.lineTo(x + radius, y + height); if (radius > 0) ctx.arcTo(x, y + height, x, y + height - radius, radius); else ctx.lineTo(x, y + height); ctx.lineTo(x, y + radius); if (radius > 0) ctx.arcTo(x, y, x + radius, y, radius); else ctx.lineTo(x,y); ctx.closePath(); if (fillColor) { ctx.fillStyle = fillColor; ctx.fill(); } ctx.restore(); if (inset && shadowColor && shadowBlur) { ctx.save(); ctx.clip(); ctx.shadowColor = shadowColor; ctx.shadowBlur = shadowBlur; ctx.shadowOffsetX = (width + shadowBlur*2); ctx.fillRect(x - (width + shadowBlur*2), y - shadowBlur, width + shadowBlur*2, height + shadowBlur*2); ctx.restore(); } if (borderColor) { ctx.strokeStyle = borderColor; ctx.lineWidth = borderWidth; ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y); if (radius > 0) ctx.arcTo(x + width, y, x + width, y + radius, radius); else ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + height - radius); if (radius > 0) ctx.arcTo(x + width, y + height, x + width - radius, y + height, radius); else ctx.lineTo(x + width, y + height); ctx.lineTo(x + radius, y + height); if (radius > 0) ctx.arcTo(x, y + height, x, y + height - radius, radius); else ctx.lineTo(x, y + height); ctx.lineTo(x, y + radius); if (radius > 0) ctx.arcTo(x, y, x + radius, y, radius); else ctx.lineTo(x,y); ctx.closePath(); ctx.stroke(); } }
     function clearCanvas() { const grad = ctx.createLinearGradient(0, 0, 0, canvas.height); LAYOUT.colors.canvasBgGradient.forEach(stop => grad.addColorStop(stop.stop, stop.color)); ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.strokeStyle = 'rgba(0, 255, 255, 0.05)'; ctx.lineWidth = 0.5; for (let i = 0; i < canvas.width; i += 30) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); } for (let i = 0; i < canvas.height; i += 30) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); } }
     function drawTopBar() { ctx.beginPath(); ctx.moveTo(0, LAYOUT.topBarHeight); ctx.lineTo(canvas.width, LAYOUT.topBarHeight); ctx.strokeStyle = LAYOUT.colors.topBarSeparatorColor; ctx.lineWidth = 1.5; ctx.shadowColor = 'rgba(0, 255, 255, 0.7)'; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowColor = 'transparent'; ctx.fillStyle = LAYOUT.colors.gold; ctx.font = LAYOUT.fonts.header; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(255,215,0,0.6)'; ctx.shadowBlur = 8; ctx.fillText(`Gold: ${formatNumber(gold)}`, LAYOUT.padding, LAYOUT.topBarHeight / 2); ctx.fillStyle = LAYOUT.colors.gps; ctx.textAlign = 'right'; ctx.shadowColor = 'rgba(57,255,20,0.6)'; ctx.shadowBlur = 8; ctx.fillText(`GPS: ${formatNumber(goldPerSecond)}/s`, canvas.width - LAYOUT.padding, LAYOUT.topBarHeight / 2); ctx.shadowColor = 'transparent'; ctx.textBaseline = 'alphabetic'; }
@@ -144,7 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const iconX = contentX;
             const iconY = contentY;
             drawTechRect(iconX, iconY, cardLayout.iconSize, cardLayout.iconSize, 4, cardLayout.iconBgColor, cardLayout.iconBorderColor, 1);
-            if (itemImageLoaded[item.id] === true && itemImages[item.id]) {
+            // Use item.id as key for loaded images/states, as imageFile might have chars not ideal for object keys if not careful
+            if (itemImageLoaded[item.id] === true && itemImages[item.id]) { 
                 ctx.drawImage(itemImages[item.id], iconX + 2, iconY + 2, cardLayout.iconSize - 4, cardLayout.iconSize - 4);
             } else {
                 ctx.fillStyle = LAYOUT.colors.iconPlaceholderText;
@@ -160,14 +168,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.textBaseline = 'top';
             const titleX = iconX + cardLayout.iconSize + 15;
             const titleMaxWidth = cardLayout.width - cardLayout.padding * 2 - cardLayout.iconSize - 20;
-            ctx.fillText(item.name, titleX, iconY + (cardLayout.iconSize / 2) - (parseInt(cardLayout.titleFont) / 2) , titleMaxWidth); // Adjusted Y for title
+            ctx.fillText(item.name, titleX, iconY + (cardLayout.iconSize / 2) - (parseInt(cardLayout.titleFont.split('px')[0]) / 2) , titleMaxWidth);
 
 
-            // (b) Fix button orientation: Stats layout adjusted for new card height
-            let statsY = iconY + cardLayout.iconSize + 15; // Start stats below icon area
+            let statsY = iconY + cardLayout.iconSize + 18; 
             const statsX = contentX;
-            const valueOffsetX = 120; // Adjusted for potentially wider labels or values
-            const statLineHeight = cardLayout.statLineHeight; // Use from LAYOUT
+            const valueOffsetX = 120; 
+            const statLineHeight = cardLayout.statLineHeight;
 
 
             ctx.font = cardLayout.statLabelFont;
@@ -201,9 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.font = cardLayout.statValueFont;
             ctx.fillStyle = LAYOUT.colors.gps;
             ctx.fillText(formatNumber(item.production * item.owned), statsX + valueOffsetX, statsY);
-            // statsY += statLineHeight; // This was the old position of buttons relative to stats.
 
-            // Buttons are now positioned from the bottom of the card, ensured by card height
             const buttonAreaY = cardY + cardLayout.height - cardLayout.padding - cardLayout.buttonHeight;
             const totalButtonWidth = cardLayout.buyButton.width + cardLayout.maxButton.width + cardLayout.buttonGap;
             const buttonsStartX = cardX + (cardLayout.width - totalButtonWidth) / 2;
@@ -238,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         ctx.restore();
 
-        if (totalShopContentHeight > shop.height) { /* ... scrollbar drawing same ... */ scrollbarHover = mouseX >= shop.scrollbar.x && mouseX <= shop.scrollbar.x + shop.scrollbar.width && mouseY >= shop.y && mouseY <= shop.y + shop.height; const scrollbarTrackHeight = shop.height; const scrollbarHandleHeight = Math.max(30, scrollbarTrackHeight * (shop.height / totalShopContentHeight)); const scrollbarHandleY = shop.y + (shopScrollY / Math.max(1, totalShopContentHeight - shop.height)) * (scrollbarTrackHeight - scrollbarHandleHeight); drawTechRect(shop.scrollbar.x, shop.y, shop.scrollbar.width, scrollbarTrackHeight, shop.scrollbar.handleBorderRadius, shop.scrollbar.color, 'rgba(0,0,0,0.2)', 1); drawTechRect(shop.scrollbar.x, Math.max(shop.y, Math.min(scrollbarHandleY, shop.y + shop.height - scrollbarHandleHeight)), shop.scrollbar.width, scrollbarHandleHeight, shop.scrollbar.handleBorderRadius, scrollbarHover ? shop.scrollbar.handleHoverColor : shop.scrollbar.handleColor, 'rgba(0,0,0,0.4)', 1); }
+        if (totalShopContentHeight > shop.height) { scrollbarHover = mouseX >= shop.scrollbar.x && mouseX <= shop.scrollbar.x + shop.scrollbar.width && mouseY >= shop.y && mouseY <= shop.y + shop.height; const scrollbarTrackHeight = shop.height; const scrollbarHandleHeight = Math.max(30, scrollbarTrackHeight * (shop.height / totalShopContentHeight)); const scrollbarHandleY = shop.y + (shopScrollY / Math.max(1, totalShopContentHeight - shop.height)) * (scrollbarTrackHeight - scrollbarHandleHeight); drawTechRect(shop.scrollbar.x, shop.y, shop.scrollbar.width, scrollbarTrackHeight, shop.scrollbar.handleBorderRadius, shop.scrollbar.color, 'rgba(0,0,0,0.2)', 1); drawTechRect(shop.scrollbar.x, Math.max(shop.y, Math.min(scrollbarHandleY, shop.y + shop.height - scrollbarHandleHeight)), shop.scrollbar.width, scrollbarHandleHeight, shop.scrollbar.handleBorderRadius, scrollbarHover ? shop.scrollbar.handleHoverColor : shop.scrollbar.handleColor, 'rgba(0,0,0,0.4)', 1); }
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
     }
