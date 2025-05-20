@@ -3,22 +3,23 @@
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameCanvas');
 
-    // === Crucial Check: Ensure canvas element was found ===
     if (!canvas) {
         console.error("FATAL ERROR: Canvas element with ID 'gameCanvas' was not found in your HTML.");
         alert("FATAL ERROR: Canvas element with ID 'gameCanvas' not found. Please check your index.html and the canvas ID. The game cannot start.");
-        return; // Stop script execution if canvas is missing
+        return;
     }
-    // =======================================================
 
     const ctx = canvas.getContext('2d');
 
     // Game State Variables
     let gold = 0;
     let goldPerSecond = 0;
-    const clickValue = 1; // Gold earned per manual click
+    const clickValue = 1;
 
-    // Equipment Data (with baseCost, production, and owned count)
+    // Image for the main clicker
+    const mainClickImage = new Image();
+    let mainClickImageLoaded = false;
+
     const equipment = [
         { id: "safety_glasses", name: "Safety Glasses", description: "Protects eyes from debris during basic tasks.", baseCost: 30.00, production: 0.30, owned: 0 },
         { id: "gloves", name: "Gloves", description: "Provides hand protection for manual labor.", baseCost: 150.00, production: 1.53, owned: 0 },
@@ -52,16 +53,14 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: "belt_sander", name: "Belt Sander", description: "Rapidly sands flat surfaces with a continuous abrasive belt.", baseCost: 5587935447692870000000.00, production: 99233054945100200000.00, owned: 0 },
     ];
 
-    // UI Layout and Styling Constants
-    // This definition now happens *after* we've confirmed canvas exists and is not null.
     const LAYOUT = {
         padding: 20,
         topBarHeight: 60,
-        mainClicker: { x: 20, y: 80, width: 200, height: 150, color: '#4CAF50', hoverColor: '#45a049', textColor: 'white' },
+        mainClicker: { x: 20, y: 80, width: 200, height: 150 }, // Color properties removed
         shop: {
-            x: 250,
-            y: 80,
-            width: canvas.width - 250 - 20, // This should now be safe
+            x: 250, // Start shop area to the right of the clicker
+            y: 80,  // Align top with clicker area
+            width: canvas.width - 250 - 20 - 20, // canvas.width - shopX - paddingRight
             itemHeight: 65,
             itemsPerPage: 9,
             buttonWidth: 80,
@@ -69,15 +68,13 @@ document.addEventListener('DOMContentLoaded', () => {
             buttonColor: '#007bff',
             buttonHoverColor: '#0056b3',
             buttonDisabledColor: '#cccccc',
-            textColor: 'white'
+            textColor: 'white' // For text on buttons
         },
         colors: {
-            background: '#f0f2f5',
             canvasBackground: '#ffffff',
             textDark: '#333333',
-            textLight: '#ffffff',
-            gold: '#FFD700',
-            gps: '#40C040',
+            gold: '#FFD700', // Gold color for text
+            gps: '#40C040',   // GPS color for text
         },
         fonts: {
             header: '24px Arial',
@@ -87,64 +84,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // This is approximately where your line 87 was.
-    // 'LAYOUT' should now be properly defined if canvas was found.
     let buyButtonRects = [];
     let mainClickerRect = LAYOUT.mainClicker;
-
     let lastUpdateTime = 0;
+    let mouse = { x: 0, y: 0 };
 
     // --- Utility Functions ---
     function formatNumber(num) {
         if (num === null || num === undefined) return '0';
         if (num < 1000) {
-            // For small numbers, show up to 2 decimal places, but remove them if they are .00
             let fixed = num.toFixed(2);
-            if (fixed.endsWith('.00')) {
-                return fixed.substring(0, fixed.length - 3);
-            }
-            // If it ends with x.y0, remove the trailing 0
+            if (fixed.endsWith('.00')) return fixed.substring(0, fixed.length - 3);
             if (fixed.endsWith('0') && fixed.includes('.')) {
-                 // Check again if it became .0 after removing trailing 0
                 let temp = fixed.substring(0, fixed.length - 1);
-                if (temp.endsWith('.0')) {
-                    return temp.substring(0, temp.length-2);
-                }
+                if (temp.endsWith('.0')) return temp.substring(0, temp.length-2);
                 return temp;
             }
             return fixed;
         }
-
-
         const suffixes = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc", "UDc", "DDc", "TDc", "QaDc", "QiDc", "SxDc", "SpDc", "OcDc", "NoDc", "Vg"];
         const i = Math.floor(Math.log10(Math.abs(num)) / 3);
-        
-        if (i >= suffixes.length) { // Fallback to scientific if too large for defined suffixes
-            return num.toExponential(2);
-        }
-        
+        if (i >= suffixes.length) return num.toExponential(2);
         const scaledNum = num / Math.pow(1000, i);
         let precision = 2;
         if (scaledNum >= 100) precision = 0;
         else if (scaledNum >= 10) precision = 1;
-
-        // Format and remove trailing zeros from decimals robustly
-        let Snum = scaledNum.toFixed(precision);
-        if (precision > 0 && Snum.includes('.')) {
-            Snum = Snum.replace(/0+$/, '').replace(/\.$/, '');
-        }
-        return Snum + suffixes[i];
+        let sNum = scaledNum.toFixed(precision);
+        if (precision > 0 && sNum.includes('.')) sNum = sNum.replace(/0+$/, '').replace(/\.$/, '');
+        return sNum + suffixes[i];
     }
-
 
     function calculateCurrentCost(item) {
         return item.baseCost * Math.pow(1.15, item.owned);
     }
 
     function recalculateGPS() {
-        goldPerSecond = equipment.reduce((totalGPS, item) => {
-            return totalGPS + (item.production * item.owned);
-        }, 0);
+        goldPerSecond = equipment.reduce((totalGPS, item) => totalGPS + (item.production * item.owned), 0);
     }
 
     // --- Drawing Functions ---
@@ -156,105 +131,93 @@ document.addEventListener('DOMContentLoaded', () => {
     function drawTopBar() {
         ctx.fillStyle = '#333';
         ctx.fillRect(0, 0, canvas.width, LAYOUT.topBarHeight);
-
         ctx.fillStyle = LAYOUT.colors.gold;
         ctx.font = LAYOUT.fonts.header;
         ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle'; // Better vertical alignment for text in a bar
+        ctx.textBaseline = 'middle';
         ctx.fillText(`Gold: ${formatNumber(gold)}`, LAYOUT.padding, LAYOUT.topBarHeight / 2);
-
         ctx.fillStyle = LAYOUT.colors.gps;
         ctx.textAlign = 'right';
         ctx.fillText(`GPS: ${formatNumber(goldPerSecond)}/s`, canvas.width - LAYOUT.padding, LAYOUT.topBarHeight / 2);
-        ctx.textBaseline = 'alphabetic'; // Reset baseline
+        ctx.textBaseline = 'alphabetic'; // Reset
     }
 
     function drawMainClicker(mouseX, mouseY) {
-        const { x, y, width, height, color, hoverColor, textColor } = LAYOUT.mainClicker;
-        let currentFill = color;
+        const { x, y, width, height } = LAYOUT.mainClicker;
+        const isHovered = (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height);
 
-        if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-            currentFill = hoverColor;
+        if (mainClickImageLoaded) {
+            ctx.drawImage(mainClickImage, x, y, width, height);
+            if (isHovered) { // Simple hover effect: slight darken overlay
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                ctx.fillRect(x, y, width, height);
+            }
+        } else {
+            ctx.fillStyle = '#cccccc'; // Placeholder if image not loaded
+            ctx.fillRect(x, y, width, height);
+            ctx.fillStyle = LAYOUT.colors.textDark;
+            ctx.font = LAYOUT.fonts.item; // Smaller font for loading text
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText("Loading Clicker...", x + width / 2, y + height / 2);
         }
-
-        ctx.fillStyle = currentFill;
-        ctx.fillRect(x, y, width, height);
-        ctx.strokeStyle = LAYOUT.colors.textDark; // Add a border
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x, y, width, height);
-
-
-        ctx.fillStyle = textColor;
-        ctx.font = LAYOUT.fonts.header;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText("Click for Gold!", x + width / 2, y + height / 2);
-        ctx.textBaseline = 'alphabetic'; // Reset baseline
-        ctx.textAlign = 'left'; // Reset align
+        ctx.textAlign = 'left'; // Reset
+        ctx.textBaseline = 'alphabetic'; // Reset
     }
 
     function drawShop(mouseX, mouseY) {
         const shopLayout = LAYOUT.shop;
         buyButtonRects = [];
-
         ctx.textBaseline = 'top';
 
         for (let i = 0; i < Math.min(equipment.length, shopLayout.itemsPerPage); i++) {
             const item = equipment[i];
             const currentCost = calculateCurrentCost(item);
-            const itemX = shopLayout.x + LAYOUT.padding; // Add padding to item content
-            const itemY = shopLayout.y + i * shopLayout.itemHeight + LAYOUT.padding / 2; // Adjust spacing a bit
-            const itemContentWidth = shopLayout.width - (LAYOUT.padding * 2);
+            const itemX = shopLayout.x + LAYOUT.padding / 2;
+            const itemY = shopLayout.y + i * shopLayout.itemHeight + LAYOUT.padding / 2;
+            const itemContentWidth = shopLayout.width - LAYOUT.padding;
 
-
-            // Item Name
             ctx.fillStyle = LAYOUT.colors.textDark;
             ctx.font = LAYOUT.fonts.item;
             ctx.textAlign = 'left';
             ctx.fillText(`${item.name} (Owned: ${item.owned})`, itemX, itemY);
-
-            // Item Stats (Cost & Production)
-            ctx.font = LAYOUT.fonts.stats; // Corrected from item to stats
+            ctx.font = LAYOUT.fonts.stats;
             ctx.fillText(`Cost: ${formatNumber(currentCost)}`, itemX, itemY + 20);
             ctx.fillStyle = LAYOUT.colors.gps;
             ctx.fillText(`GPS: +${formatNumber(item.production)}`, itemX, itemY + 40);
 
-            // Buy Button
-            const buttonX = itemX + itemContentWidth - shopLayout.buttonWidth; // Position button within padded area
-            const buttonY = itemY + (shopLayout.itemHeight - shopLayout.buttonHeight -10 ) / 2 -5 ; // Adjusted for new itemY
+            const buttonX = itemX + itemContentWidth - shopLayout.buttonWidth;
+            const buttonY = itemY + (shopLayout.itemHeight - shopLayout.buttonHeight - 10) / 2 - 5; // Centering button within item slot
             const buttonRect = { x: buttonX, y: buttonY, width: shopLayout.buttonWidth, height: shopLayout.buttonHeight, itemIndex: i };
             buyButtonRects.push(buttonRect);
 
-            let btnFill = gold >= currentCost ? shopLayout.buttonColor : shopLayout.buttonDisabledColor;
-            if (gold >= currentCost && mouseX >= buttonX && mouseX <= buttonX + shopLayout.buttonWidth && mouseY >= buttonY && mouseY <= buttonY + shopLayout.buttonHeight) {
+            const canAfford = gold >= currentCost;
+            const isButtonHovered = (mouseX >= buttonX && mouseX <= buttonX + shopLayout.buttonWidth && mouseY >= buttonY && mouseY <= buttonY + shopLayout.buttonHeight);
+            let btnFill = canAfford ? shopLayout.buttonColor : shopLayout.buttonDisabledColor;
+            if (canAfford && isButtonHovered) {
                 btnFill = shopLayout.buttonHoverColor;
             }
-
             ctx.fillStyle = btnFill;
             ctx.fillRect(buttonX, buttonY, shopLayout.buttonWidth, shopLayout.buttonHeight);
-            
-            // Button border
             ctx.strokeStyle = LAYOUT.colors.textDark;
             ctx.lineWidth = 1;
             ctx.strokeRect(buttonX, buttonY, shopLayout.buttonWidth, shopLayout.buttonHeight);
-
-
-            ctx.fillStyle = LAYOUT.shop.textColor; // Ensure text color is set for button
+            ctx.fillStyle = shopLayout.textColor;
             ctx.font = LAYOUT.fonts.button;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("Buy", buttonX + shopLayout.buttonWidth / 2, buttonY + shopLayout.buttonHeight / 2);
-            ctx.textBaseline = 'alphabetic'; // Reset
-            ctx.textAlign = 'left'; // Reset
         }
+        ctx.textAlign = 'left'; // Reset
+        ctx.textBaseline = 'alphabetic'; // Reset
+
         if (equipment.length > shopLayout.itemsPerPage) {
             ctx.fillStyle = LAYOUT.colors.textDark;
             ctx.font = LAYOUT.fonts.item;
             ctx.textAlign = 'center';
-            const shopBottom = shopLayout.y + shopLayout.itemsPerPage * shopLayout.itemHeight + LAYOUT.padding + 30; // Increased spacing
-            ctx.fillText(`Showing ${shopLayout.itemsPerPage} of ${equipment.length} items.`, shopLayout.x + shopLayout.width/2, shopBottom);
-            // (Pagination controls would be drawn here)
-            ctx.textAlign = 'left'; // Reset
+            const shopBottom = shopLayout.y + shopLayout.itemsPerPage * shopLayout.itemHeight + LAYOUT.padding + 30;
+            ctx.fillText(`Showing ${shopLayout.itemsPerPage} of ${equipment.length} items.`, shopLayout.x + shopLayout.width / 2, shopBottom);
+            ctx.textAlign = 'left';
         }
     }
 
@@ -263,12 +226,10 @@ document.addEventListener('DOMContentLoaded', () => {
         gold += clickValue;
     }
 
-    function buyEquipment(itemIndex) {
-        if (itemIndex < 0 || itemIndex >= equipment.length) return; // Bounds check
-
+    function buyEquipmentItem(itemIndex) {
+        if (itemIndex < 0 || itemIndex >= equipment.length) return;
         const item = equipment[itemIndex];
         const currentCost = calculateCurrentCost(item);
-
         if (gold >= currentCost) {
             gold -= currentCost;
             item.owned++;
@@ -278,7 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    let mouse = { x: 0, y: 0 };
     canvas.addEventListener('mousemove', (event) => {
         const rect = canvas.getBoundingClientRect();
         mouse.x = event.clientX - rect.left;
@@ -290,22 +250,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const clickX = event.clientX - rect.left;
         const clickY = event.clientY - rect.top;
 
-        // Check main clicker
         if (clickX >= mainClickerRect.x && clickX <= mainClickerRect.x + mainClickerRect.width &&
             clickY >= mainClickerRect.y && clickY <= mainClickerRect.y + mainClickerRect.height) {
-            handleManualClick();
+            if (mainClickImageLoaded) handleManualClick(); // Only allow click if image is loaded
             return;
         }
 
-        // Check buy buttons
         for (const btn of buyButtonRects) {
             if (clickX >= btn.x && clickX <= btn.x + btn.width &&
                 clickY >= btn.y && clickY <= btn.y + btn.height) {
                 const item = equipment[btn.itemIndex];
-                if (gold >= calculateCurrentCost(item)) { // Check affordability again before buying
-                     buyEquipment(btn.itemIndex);
-                } else {
-                    console.log("Clicked disabled buy button for " + item.name);
+                if (gold >= calculateCurrentCost(item)) {
+                     buyEquipmentItem(btn.itemIndex);
                 }
                 return;
             }
@@ -314,11 +270,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Game Loop ---
     function update(deltaTime) {
-        if (deltaTime > 0.1) { // Prevent huge jump if tab was inactive for a long time
-            deltaTime = 0.1;
-        }
-        const goldEarnedThisFrame = goldPerSecond * deltaTime;
-        gold += goldEarnedThisFrame;
+        if (deltaTime > 0.1) deltaTime = 0.1; // Cap deltaTime
+        gold += goldPerSecond * deltaTime;
     }
 
     function draw() {
@@ -328,21 +281,36 @@ document.addEventListener('DOMContentLoaded', () => {
         drawShop(mouse.x, mouse.y);
     }
 
+    let gameLoopStarted = false;
     function gameLoop(timestamp) {
+        if (!gameLoopStarted) { // Ensure this doesn't run if init fails before image load
+            lastUpdateTime = timestamp;
+            gameLoopStarted = true;
+        }
         const deltaTime = (timestamp - lastUpdateTime) / 1000;
         lastUpdateTime = timestamp;
 
         update(deltaTime);
         draw();
-
         requestAnimationFrame(gameLoop);
     }
 
     // --- Initialization ---
     function init() {
         recalculateGPS();
-        lastUpdateTime = performance.now();
-        requestAnimationFrame(gameLoop);
+        // lastUpdateTime = performance.now(); // Moved to first call of gameLoop
+
+        mainClickImage.onload = () => {
+            console.log("Main clicker image loaded.");
+            mainClickImageLoaded = true;
+            if (!gameLoopStarted) requestAnimationFrame(gameLoop); // Start game loop only if not already started
+        };
+        mainClickImage.onerror = () => {
+            console.error("Error loading image: pics/manual/Main_click.png. Using placeholder.");
+            mainClickImageLoaded = false; // Will draw placeholder
+            if (!gameLoopStarted) requestAnimationFrame(gameLoop); // Still try to run the game
+        };
+        mainClickImage.src = 'pics/manual/Main_click.png';
     }
 
     init();
