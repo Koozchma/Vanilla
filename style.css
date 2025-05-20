@@ -7,7 +7,7 @@ body {
     font-family: 'Arial', sans-serif; /* A common, clean sans-serif font */
     background-color: #f0f2f5; /* A light, neutral background for the page */
     display: flex; /* Enable flexbox for centering */
-    flex-direction: column; /* Stack items vertically if needed (e.g., header, game, footer) */
+    flex-direction: column; /* Stack items vertically if needed */
     justify-content: center; /* Center content vertically on the page */
     align-items: center; /* Center content horizontally on the page */
     min-height: 100vh; /* Ensure the body takes at least the full viewport height */
@@ -16,24 +16,18 @@ body {
 
 /* Container for the game canvas */
 .game-container {
-    padding: 0; /* No padding, let the canvas fill it if desired */
+    padding: 0;
     border: 2px solid #4a5568; /* A slightly more prominent border for the game area */
     border-radius: 8px; /* Slightly rounded corners for the container */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* A bit more pronounced shadow for depth */
-    background-color: #ffffff; /* White background for the canvas area if canvas is transparent or smaller */
+    background-color: #ffffff; /* White background for the canvas area */
     line-height: 0; /* Helps remove any unexpected spacing around the canvas */
 }
 
 /* Canvas specific styling */
-canvas#gameCanvas { /* Targeting the canvas by its ID for specificity */
-    display: block; /* Important: Removes extra space below the canvas if it's treated as inline */
-    background-color: #e2e8f0; /* A light grey background for the canvas itself, visible if JS doesn't draw over everything */
-    /* The width and height attributes in the HTML tag determine the canvas's internal resolution.
-       CSS width and height would scale the displayed size of the canvas.
-       For a crisp pixel-perfect game, it's often best to manage dimensions via JS or HTML attributes
-       and avoid CSS scaling unless designing for responsiveness. */
-    /* Example: If you wanted a border directly on the canvas instead of/in addition to the container: */
-    /* border: 1px solid #c0c0c0; */
+canvas#gameCanvas {
+    display: block; /* Important: Removes extra space below the canvas */
+    background-color: #e2e8f0; /* Fallback canvas background */
     border-radius: 6px; /* Match the container's rounding if no border directly on canvas */
 }
 
@@ -43,24 +37,3 @@ h1, h2 {
     text-align: center;
     margin-bottom: 20px;
 }
-
-/*
-  Note: Styles for elements *inside* the game (like buttons, text for gold count,
-  item lists) will need to be handled by the JavaScript drawing functions that
-  render onto the canvas. CSS cannot directly style graphics drawn on a canvas.
-  However, you can use CSS to load fonts (e.g., @font-face) that JavaScript
-  can then reference when drawing text.
-*/
-
-/* Example of how you might load a custom font for use in canvas text */
-/*
-@font-face {
-    font-family: 'GameFont';
-    src: url('path/to/your/gamefont.woff2') format('woff2'),
-         url('path/to/your/gamefont.woff') format('woff');
-}
-
-body {
-    font-family: 'GameFont', 'Arial', sans-serif; // Fallback fonts
-}
-*/
