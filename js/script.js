@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: "screwdriver_set", name: "Screwdriver Set", imageFile: "4. Screwdriver Set", baseCost: 3750, production: 39.7953, owned: 0 },
         { id: "pliers", name: "Pliers", imageFile: "5. Pliers", baseCost: 18750, production: 202.95603, owned: 0 },
         { id: "wrench_set", name: "Wrench Set", imageFile: "6. Wrench Set", baseCost: 93750, production: 1035.075753, owned: 0 },
-        { id: "utility_knife_box_cutter", name: "Utility Knife/Box Cutter", imageFile: "7. Utility Knife/Box Cutter", baseCost: 468750, production: 5278.88634, owned: 0 },
+        { id: "utility_knife_box_cutter", name: "Utility Knife/Box Cutter", imageFile: "7. Utility KnifeBox Cutter.png", baseCost: 468750, production: 5278.88634, owned: 0 },
         { id: "measuring_tape", name: "Measuring Tape", imageFile: "8. Measuring Tape", baseCost: 2343750, production: 26922.32034, owned: 0 },
         { id: "hand_saw", name: "Hand Saw", imageFile: "9. Hand Saw", baseCost: 11718750, production: 137303.8337, owned: 0 },
         { id: "chisel_set", name: "Chisel Set", imageFile: "10. Chisel Set", baseCost: 58593750, production: 700249.5519, owned: 0 },
