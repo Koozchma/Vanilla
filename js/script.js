@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function calculateCurrentCost(item) {
-        return item.baseCost * Math.pow(1.15, item.owned);
+        return item.baseCost * Math.pow(1.0, item.owned);
     }
 
     function recalculateGPS() {
