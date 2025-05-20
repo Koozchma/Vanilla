@@ -2,6 +2,15 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameCanvas');
+
+    // === Crucial Check: Ensure canvas element was found ===
+    if (!canvas) {
+        console.error("FATAL ERROR: Canvas element with ID 'gameCanvas' was not found in your HTML.");
+        alert("FATAL ERROR: Canvas element with ID 'gameCanvas' not found. Please check your index.html and the canvas ID. The game cannot start.");
+        return; // Stop script execution if canvas is missing
+    }
+    // =======================================================
+
     const ctx = canvas.getContext('2d');
 
     // Game State Variables
@@ -10,7 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const clickValue = 1; // Gold earned per manual click
 
     // Equipment Data (with baseCost, production, and owned count)
-    // Using the data structure from your prompt
     const equipment = [
         { id: "safety_glasses", name: "Safety Glasses", description: "Protects eyes from debris during basic tasks.", baseCost: 30.00, production: 0.30, owned: 0 },
         { id: "gloves", name: "Gloves", description: "Provides hand protection for manual labor.", baseCost: 150.00, production: 1.53, owned: 0 },
@@ -42,23 +50,20 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: "rotary_tool", name: "Rotary Tool", description: "A versatile handheld tool for grinding, sanding, and polishing small parts.", baseCost: 223517417907715000000.00, production: 3815188579204160000.00, owned: 0 },
         { id: "bench_grinder", name: "Bench Grinder", description: "Sharpens tools and grinds metal on a stationary wheel.", baseCost: 1117587089538570000000.00, production: 19457461753941200000.00, owned: 0 },
         { id: "belt_sander", name: "Belt Sander", description: "Rapidly sands flat surfaces with a continuous abrasive belt.", baseCost: 5587935447692870000000.00, production: 99233054945100200000.00, owned: 0 },
-        // Add more items here if you have the full list and want them available in the data
-        // For example (ensure you have the correct very large numbers for these):
-        // { id: "drill_press", name: "Drill Press", baseCost: 2.7939e22, production: 5.0608e20, owned: 0 },
-        // { id: "scroll_saw", name: "Scroll Saw", baseCost: 1.3969e23, production: 2.5810e21, owned: 0 },
     ];
 
     // UI Layout and Styling Constants
-    constLAYOUT = {
+    // This definition now happens *after* we've confirmed canvas exists and is not null.
+    const LAYOUT = {
         padding: 20,
         topBarHeight: 60,
         mainClicker: { x: 20, y: 80, width: 200, height: 150, color: '#4CAF50', hoverColor: '#45a049', textColor: 'white' },
         shop: {
             x: 250,
             y: 80,
-            width: canvas.width - 250 - 20, // Adjusted for padding
-            itemHeight: 65, // Increased height slightly
-            itemsPerPage: 9, // Max items visible without scrolling
+            width: canvas.width - 250 - 20, // This should now be safe
+            itemHeight: 65,
+            itemsPerPage: 9,
             buttonWidth: 80,
             buttonHeight: 30,
             buttonColor: '#007bff',
@@ -67,8 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
             textColor: 'white'
         },
         colors: {
-            background: '#f0f2f5', // Page background, canvas has its own
-            canvasBackground: '#ffffff', // White background for the game area
+            background: '#f0f2f5',
+            canvasBackground: '#ffffff',
             textDark: '#333333',
             textLight: '#ffffff',
             gold: '#FFD700',
@@ -82,36 +87,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // To store calculated positions of buy buttons for click detection
+    // This is approximately where your line 87 was.
+    // 'LAYOUT' should now be properly defined if canvas was found.
     let buyButtonRects = [];
-    let mainClickerRect = LAYOUT.mainClicker; // For easier access
+    let mainClickerRect = LAYOUT.mainClicker;
 
     let lastUpdateTime = 0;
 
     // --- Utility Functions ---
     function formatNumber(num) {
         if (num === null || num === undefined) return '0';
-        if (num < 1000) return num.toFixed(2).replace(/\.00$/, ''); // Keep up to 2 decimal places, remove .00
+        if (num < 1000) {
+            // For small numbers, show up to 2 decimal places, but remove them if they are .00
+            let fixed = num.toFixed(2);
+            if (fixed.endsWith('.00')) {
+                return fixed.substring(0, fixed.length - 3);
+            }
+            // If it ends with x.y0, remove the trailing 0
+            if (fixed.endsWith('0') && fixed.includes('.')) {
+                 // Check again if it became .0 after removing trailing 0
+                let temp = fixed.substring(0, fixed.length - 1);
+                if (temp.endsWith('.0')) {
+                    return temp.substring(0, temp.length-2);
+                }
+                return temp;
+            }
+            return fixed;
+        }
+
 
         const suffixes = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc", "UDc", "DDc", "TDc", "QaDc", "QiDc", "SxDc", "SpDc", "OcDc", "NoDc", "Vg"];
         const i = Math.floor(Math.log10(Math.abs(num)) / 3);
-        const scaledNum = num / Math.pow(1000, i);
-
-        if (suffixes[i] === undefined) { // Fallback to scientific if too large for suffixes
+        
+        if (i >= suffixes.length) { // Fallback to scientific if too large for defined suffixes
             return num.toExponential(2);
         }
-        // Ensure 3 significant figures for larger numbers, or fewer decimals for smaller scaled numbers
+        
+        const scaledNum = num / Math.pow(1000, i);
         let precision = 2;
-        if (scaledNum < 10) precision = 2;
-        else if (scaledNum < 100) precision = 1;
-        else precision = 0;
+        if (scaledNum >= 100) precision = 0;
+        else if (scaledNum >= 10) precision = 1;
 
-        return scaledNum.toFixed(precision).replace(/\.0+$/, '') + suffixes[i];
+        // Format and remove trailing zeros from decimals robustly
+        let Snum = scaledNum.toFixed(precision);
+        if (precision > 0 && Snum.includes('.')) {
+            Snum = Snum.replace(/0+$/, '').replace(/\.$/, '');
+        }
+        return Snum + suffixes[i];
     }
 
 
     function calculateCurrentCost(item) {
-        return item.baseCost * Math.pow(1.15, item.owned); // 15% cost increase per item owned
+        return item.baseCost * Math.pow(1.15, item.owned);
     }
 
     function recalculateGPS() {
@@ -127,19 +154,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function drawTopBar() {
-        ctx.fillStyle = '#333'; // Darker top bar
+        ctx.fillStyle = '#333';
         ctx.fillRect(0, 0, canvas.width, LAYOUT.topBarHeight);
 
-        // Gold Display
         ctx.fillStyle = LAYOUT.colors.gold;
         ctx.font = LAYOUT.fonts.header;
         ctx.textAlign = 'left';
-        ctx.fillText(`Gold: ${formatNumber(gold)}`, LAYOUT.padding, LAYOUT.topBarHeight / 2 + 8);
+        ctx.textBaseline = 'middle'; // Better vertical alignment for text in a bar
+        ctx.fillText(`Gold: ${formatNumber(gold)}`, LAYOUT.padding, LAYOUT.topBarHeight / 2);
 
-        // GPS Display
         ctx.fillStyle = LAYOUT.colors.gps;
         ctx.textAlign = 'right';
-        ctx.fillText(`GPS: ${formatNumber(goldPerSecond)}/s`, canvas.width - LAYOUT.padding, LAYOUT.topBarHeight / 2 + 8);
+        ctx.fillText(`GPS: ${formatNumber(goldPerSecond)}/s`, canvas.width - LAYOUT.padding, LAYOUT.topBarHeight / 2);
+        ctx.textBaseline = 'alphabetic'; // Reset baseline
     }
 
     function drawMainClicker(mouseX, mouseY) {
@@ -152,48 +179,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ctx.fillStyle = currentFill;
         ctx.fillRect(x, y, width, height);
+        ctx.strokeStyle = LAYOUT.colors.textDark; // Add a border
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, width, height);
+
+
         ctx.fillStyle = textColor;
         ctx.font = LAYOUT.fonts.header;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText("Click for Gold!", x + width / 2, y + height / 2);
-        ctx.strokeStyle = LAYOUT.colors.textDark;
-        ctx.strokeRect(x,y,width,height);
+        ctx.textBaseline = 'alphabetic'; // Reset baseline
+        ctx.textAlign = 'left'; // Reset align
     }
 
     function drawShop(mouseX, mouseY) {
         const shopLayout = LAYOUT.shop;
-        buyButtonRects = []; // Clear for redraw
+        buyButtonRects = [];
 
-        ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
 
         for (let i = 0; i < Math.min(equipment.length, shopLayout.itemsPerPage); i++) {
             const item = equipment[i];
             const currentCost = calculateCurrentCost(item);
-            const itemY = shopLayout.y + i * shopLayout.itemHeight + LAYOUT.padding;
-
-            // Item background box (optional)
-            // ctx.fillStyle = (i % 2 === 0) ? '#f9f9f9' : '#efefef';
-            // ctx.fillRect(shopLayout.x, itemY - 5, shopLayout.width, shopLayout.itemHeight - 5);
-            // ctx.strokeStyle = '#ddd';
-            // ctx.strokeRect(shopLayout.x, itemY - 5, shopLayout.width, shopLayout.itemHeight - 5);
+            const itemX = shopLayout.x + LAYOUT.padding; // Add padding to item content
+            const itemY = shopLayout.y + i * shopLayout.itemHeight + LAYOUT.padding / 2; // Adjust spacing a bit
+            const itemContentWidth = shopLayout.width - (LAYOUT.padding * 2);
 
 
             // Item Name
             ctx.fillStyle = LAYOUT.colors.textDark;
             ctx.font = LAYOUT.fonts.item;
-            ctx.fillText(`${item.name} (Owned: ${item.owned})`, shopLayout.x + 5, itemY);
+            ctx.textAlign = 'left';
+            ctx.fillText(`${item.name} (Owned: ${item.owned})`, itemX, itemY);
 
             // Item Stats (Cost & Production)
-            ctx.font = LAYOUT.fonts.stats;
-            ctx.fillText(`Cost: ${formatNumber(currentCost)}`, shopLayout.x + 5, itemY + 20);
+            ctx.font = LAYOUT.fonts.stats; // Corrected from item to stats
+            ctx.fillText(`Cost: ${formatNumber(currentCost)}`, itemX, itemY + 20);
             ctx.fillStyle = LAYOUT.colors.gps;
-            ctx.fillText(`GPS: +${formatNumber(item.production)}`, shopLayout.x + 5, itemY + 40);
+            ctx.fillText(`GPS: +${formatNumber(item.production)}`, itemX, itemY + 40);
 
             // Buy Button
-            const buttonX = shopLayout.x + shopLayout.width - shopLayout.buttonWidth - 5;
-            const buttonY = itemY + (shopLayout.itemHeight - shopLayout.buttonHeight - 10) / 2; // Vertically center button in item slot
+            const buttonX = itemX + itemContentWidth - shopLayout.buttonWidth; // Position button within padded area
+            const buttonY = itemY + (shopLayout.itemHeight - shopLayout.buttonHeight -10 ) / 2 -5 ; // Adjusted for new itemY
             const buttonRect = { x: buttonX, y: buttonY, width: shopLayout.buttonWidth, height: shopLayout.buttonHeight, itemIndex: i };
             buyButtonRects.push(buttonRect);
 
@@ -204,21 +232,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             ctx.fillStyle = btnFill;
             ctx.fillRect(buttonX, buttonY, shopLayout.buttonWidth, shopLayout.buttonHeight);
+            
+            // Button border
+            ctx.strokeStyle = LAYOUT.colors.textDark;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(buttonX, buttonY, shopLayout.buttonWidth, shopLayout.buttonHeight);
 
-            ctx.fillStyle = LAYOUT.shop.textColor;
+
+            ctx.fillStyle = LAYOUT.shop.textColor; // Ensure text color is set for button
             ctx.font = LAYOUT.fonts.button;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText("Buy", buttonX + shopLayout.buttonWidth / 2, buttonY + shopLayout.buttonHeight / 2);
+            ctx.textBaseline = 'alphabetic'; // Reset
             ctx.textAlign = 'left'; // Reset
         }
-        // Placeholder for pagination if more items
         if (equipment.length > shopLayout.itemsPerPage) {
             ctx.fillStyle = LAYOUT.colors.textDark;
             ctx.font = LAYOUT.fonts.item;
             ctx.textAlign = 'center';
-            const shopBottom = shopLayout.y + shopLayout.itemsPerPage * shopLayout.itemHeight + LAYOUT.padding + 20;
-            ctx.fillText(`Showing ${shopLayout.itemsPerPage} of ${equipment.length} items. Pagination not yet implemented.`, shopLayout.x + shopLayout.width/2, shopBottom);
+            const shopBottom = shopLayout.y + shopLayout.itemsPerPage * shopLayout.itemHeight + LAYOUT.padding + 30; // Increased spacing
+            ctx.fillText(`Showing ${shopLayout.itemsPerPage} of ${equipment.length} items.`, shopLayout.x + shopLayout.width/2, shopBottom);
+            // (Pagination controls would be drawn here)
             ctx.textAlign = 'left'; // Reset
         }
     }
@@ -229,6 +264,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buyEquipment(itemIndex) {
+        if (itemIndex < 0 || itemIndex >= equipment.length) return; // Bounds check
+
         const item = equipment[itemIndex];
         const currentCost = calculateCurrentCost(item);
 
@@ -237,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
             item.owned++;
             recalculateGPS();
         } else {
-            // Optionally play a sound or show a message "Not enough gold"
             console.log("Not enough gold for " + item.name);
         }
     }
@@ -258,21 +294,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (clickX >= mainClickerRect.x && clickX <= mainClickerRect.x + mainClickerRect.width &&
             clickY >= mainClickerRect.y && clickY <= mainClickerRect.y + mainClickerRect.height) {
             handleManualClick();
-            return; // Processed click
+            return;
         }
 
         // Check buy buttons
         for (const btn of buyButtonRects) {
             if (clickX >= btn.x && clickX <= btn.x + btn.width &&
                 clickY >= btn.y && clickY <= btn.y + btn.height) {
-                buyEquipment(btn.itemIndex);
-                return; // Processed click
+                const item = equipment[btn.itemIndex];
+                if (gold >= calculateCurrentCost(item)) { // Check affordability again before buying
+                     buyEquipment(btn.itemIndex);
+                } else {
+                    console.log("Clicked disabled buy button for " + item.name);
+                }
+                return;
             }
         }
     });
 
     // --- Game Loop ---
     function update(deltaTime) {
+        if (deltaTime > 0.1) { // Prevent huge jump if tab was inactive for a long time
+            deltaTime = 0.1;
+        }
         const goldEarnedThisFrame = goldPerSecond * deltaTime;
         gold += goldEarnedThisFrame;
     }
@@ -280,12 +324,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function draw() {
         clearCanvas();
         drawTopBar();
-        drawMainClicker(mouse.x, mouse.y); // Pass mouse coords for hover effects
-        drawShop(mouse.x, mouse.y);       // Pass mouse coords for hover effects
+        drawMainClicker(mouse.x, mouse.y);
+        drawShop(mouse.x, mouse.y);
     }
 
     function gameLoop(timestamp) {
-        const deltaTime = (timestamp - lastUpdateTime) / 1000; // Time in seconds
+        const deltaTime = (timestamp - lastUpdateTime) / 1000;
         lastUpdateTime = timestamp;
 
         update(deltaTime);
@@ -296,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization ---
     function init() {
-        recalculateGPS(); // Initial GPS based on any pre-set owned items (currently 0)
+        recalculateGPS();
         lastUpdateTime = performance.now();
         requestAnimationFrame(gameLoop);
     }
